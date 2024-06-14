@@ -576,6 +576,7 @@ def is_empty_output(decoded_output):
 
 
 def api_status_sanity_check_rest():
+
     # We only need to import the executable_checker_rest in this function. So a local import is used.
     from checker import executable_checker_rest
 
@@ -730,6 +731,7 @@ def record_cost_latency(leaderboard_table, model_name, model_output_data):
 
 
 def get_metric(model_name, cost_data, latency_data):
+
     cost, mean_latency, std_latency, percentile_95_latency = "N/A", "N/A", "N/A", "N/A"
 
     if (
@@ -904,6 +906,7 @@ def generate_leaderboard_csv(leaderboard_table, output_path):
 
 
 def update_leaderboard_table_with_score_file(leaderboard_table, score_path):
+
     entries = os.scandir(score_path)
 
     # Filter out the subdirectories

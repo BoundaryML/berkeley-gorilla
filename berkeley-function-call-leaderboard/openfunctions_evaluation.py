@@ -47,9 +47,8 @@ def build_handler(model_name, temperature, top_p, max_tokens):
 
 def load_file(test_category):
     if test_category == "all":
-        test_cate, files_to_open = (
-            list(test_categories.keys()),
-            list(test_categories.values()),
+        test_cate, files_to_open = list(test_categories.keys()), list(
+            test_categories.values()
         )
     else:
         test_cate, files_to_open = [test_category], [test_categories[test_category]]
