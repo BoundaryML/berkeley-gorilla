@@ -2,11 +2,11 @@ import json
 from tree_sitter import Language, Parser
 
 # Load your language grammar and create a parser
-Language.build_library("build/tree_sitter_js.so", ["./tree-sitter-javascript"])
+# Language.build_library("build/tree_sitter_js.so", ["./tree-sitter-javascript"])
 
-JS_LANGUAGE = Language("build/tree_sitter_js.so", "javascript")
-parser = Parser()
-parser.set_language(JS_LANGUAGE)
+# JS_LANGUAGE = Language("build/tree_sitter_js.so", "javascript")
+# parser = Parser()
+# parser.set_language(JS_LANGUAGE)
 
 
 def parse_javascript_function_call(source_code):

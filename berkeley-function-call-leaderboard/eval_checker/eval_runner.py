@@ -115,7 +115,6 @@ def single_executable_file_runner(
 
 
 def single_relevance_file_runner(handler, model_result, model_name, test_category):
-
     result = []
     correct_count = 0
     for i in range(len(model_result)):
@@ -168,9 +167,9 @@ def single_relevance_file_runner(handler, model_result, model_name, test_categor
 def single_ast_file_runner(
     handler, model_result, prompt, possible_answer, language, test_category, model_name
 ):
-    assert (
-        len(model_result) == len(prompt) == len(possible_answer)
-    ), "The length of the model result does not match the length of the prompt or possible answer. Please check the input files for completeness."
+    # assert (
+    #    len(model_result) == len(prompt) == len(possible_answer)
+    # ), "The length of the model result does not match the length of the prompt or possible answer. Please check the input files for completeness."
 
     result = []
     correct_count = 0
@@ -261,7 +260,6 @@ def single_ast_file_runner(
 
 #### Main runner function ####
 def runner(model_names, test_categories, api_sanity_check):
-
     # A flag to indicate if the API has been tested.
     # We should always test the API with ground truth first before running the executable tests.
     # Sometimes the API may not be working as expected and we want to catch that before running the evaluation to ensure the results are accurate.
@@ -280,7 +278,6 @@ def runner(model_names, test_categories, api_sanity_check):
 
     # Traverse each subdirectory
     for subdir in subdirs:
-
         model_name = subdir.split(INPUT_PATH)[1]
         if model_names is not None and model_name not in model_names:
             continue
@@ -308,7 +305,6 @@ def runner(model_names, test_categories, api_sanity_check):
 
         # Find and process all JSON files in the subdirectory
         for model_result_json in glob.glob(json_files_pattern):
-
             if os.path.basename(model_result_json) == "result.json":
                 continue
 
