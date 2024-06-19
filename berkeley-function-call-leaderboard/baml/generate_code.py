@@ -221,12 +221,14 @@ def main():
             os.makedirs(os.path.dirname(generated_baml), exist_ok=True)
             open(generated_baml, "w").write(f"{prepend_slashes(skip_reason)}\n\n{prepend_slashes(original_data)}")
 
+    generated_py_dir="generated-py"
+    shutil.rmtree(generated_py_dir, ignore_errors=True)
     for test_category, render_arg_list in all_render_args.items():
         template = env.get_template("template-test.py.j2")
         rendered = template.render(
             tests=render_arg_list, test_category=test_category, llm_client=llm_client
         )
-        generated_test = f"generated/test_{test_category}.py"
+        generated_test = os.path.join(generated_py_dir, f"test_{test_category}.py")
         os.makedirs(os.path.dirname(generated_test), exist_ok=True)
         open(generated_test, "w").write(rendered)
 
