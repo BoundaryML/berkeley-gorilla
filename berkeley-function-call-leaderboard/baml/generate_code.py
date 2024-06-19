@@ -67,6 +67,8 @@ def field_type_to_baml_type(prefix: str, field_type: dict[str, Any], enums: list
             array_type = field_type_to_baml_type(prefix, field_type["items"], enums, classes)
             return f"{array_type}[]"
         case "dict":
+            if 'properties' not in field_type:
+                raise SyntaxError("skip: BAML does not support map types")
             fields = [
                 OutputField(
                     field_name=field_name,
@@ -82,7 +84,7 @@ def field_type_to_baml_type(prefix: str, field_type: dict[str, Any], enums: list
             classes.append(ClassType(name=class_name, fields=fields))
             return class_name
         case _:
-            raise RuntimeError(f"skip: unknown type {field_type}")
+            raise SyntaxError(f"skip: no BAML type corresponds to {field_type}")
 
 
 @dataclass
@@ -140,12 +142,10 @@ def main():
         test_category = filename.replace("gorilla_openfunctions_v1_test_", "").replace(
             ".json", ""
         )
+        fn_name = f"Fn_{test_category}_{lineno}"
+        original_data = json.dumps(data, indent=2)
         # print(test_category)
         try:
-            original_data = json.dumps(data, indent=2)
-            # print(original_data)
-
-            fn_name = f"Fn_{test_category}_{lineno}"
 
             funcs = data["function"]
             if not isinstance(funcs, list):
@@ -169,7 +169,7 @@ def main():
                         if not field_type.endswith("[]"):
                             field_type = f"{field_type}?"
                     if k in ["_class", "_from", "class"]:
-                        raise SyntaxError(f"skip: {k} is an invalid property name")
+                        raise SyntaxError(f"skip: {k} is an invalid BAML property name")
 
                     output_fields.append(
                         OutputField(
@@ -213,8 +213,13 @@ def main():
             open(generated_baml, "w").write(rendered)
 
         except Exception as e:
-            print(f"skipped {filename}:{lineno} due to {repr(e)}")
-            #print(f"skipped {filename}:{lineno} due to {traceback.format_exc()}")
+            skip_reason = f"skipped {filename}:{lineno} due to {e}"
+            print(skip_reason)
+            skip_reason = f"skipped {filename}:{lineno} due to:\n\n{traceback.format_exc()}"
+
+            generated_baml = f"baml_src/generated-{test_category}/{fn_name}.baml"
+            os.makedirs(os.path.dirname(generated_baml), exist_ok=True)
+            open(generated_baml, "w").write(f"{prepend_slashes(skip_reason)}\n\n{prepend_slashes(original_data)}")
 
     for test_category, render_arg_list in all_render_args.items():
         template = env.get_template("template-test.py.j2")
