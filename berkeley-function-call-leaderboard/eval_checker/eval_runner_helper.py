@@ -739,6 +739,7 @@ def get_metric(model_name, cost_data, latency_data):
         and len(cost_data["input_data"]) > 0
         and len(cost_data["output_data"]) > 0
     ):
+
         mean_input_token = statistics.mean(cost_data["input_data"])
         mean_output_token = statistics.mean(cost_data["output_data"])
         cost = (

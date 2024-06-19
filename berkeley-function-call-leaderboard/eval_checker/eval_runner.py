@@ -115,6 +115,7 @@ def single_executable_file_runner(
 
 
 def single_relevance_file_runner(handler, model_result, model_name, test_category):
+
     result = []
     correct_count = 0
     for i in range(len(model_result)):
