@@ -8,8 +8,9 @@ import shutil
 from jinja2 import Environment, FileSystemLoader
 
 # Constants
-test_dir_path = "/Users/sam/repos/Berkeley-Function-Calling-Leaderboard/"
+test_dir_path = "../data"
 test_categories = ["simple", "multiple_function", "parallel_function", "parallel_multiple_function"]
+llm_client = os.environ["BAML_CLIENT"].split(":")[0]
 
 # Function to prepend slashes to each line
 def prepend_slashes(text: str):
@@ -24,20 +25,17 @@ env = Environment(
 
 env.filters["prepend_slashes"] = prepend_slashes
 
-# llm_client = "Mistral"
-llm_client = "GPT35Turbo"
-
-
 def get_datasets():
   for test_category in test_categories:
-    file_path = os.path.join(test_dir_path, f"gorilla_openfunctions_v1_test_{test_category}.json")
+    filename = f"gorilla_openfunctions_v1_test_{test_category}.json"
+    file_path = os.path.join(test_dir_path, filename)
     # Open and read the JSON file
     with open(file_path, "r") as file:
         for lineno, line in enumerate(file.readlines(), start=1):
             if len(line.strip()) == 0:
                 continue
             data = json.loads(line)
-            yield (test_category, lineno, data)
+            yield (filename, lineno, data)
 
 
 def sanitize(fn_name: str) -> str:
@@ -221,8 +219,10 @@ def main():
             os.makedirs(os.path.dirname(generated_baml), exist_ok=True)
             open(generated_baml, "w").write(f"{prepend_slashes(skip_reason)}\n\n{prepend_slashes(original_data)}")
 
-    generated_py_dir="generated-py"
+    generated_py_dir="generated_py"
     shutil.rmtree(generated_py_dir, ignore_errors=True)
+    os.makedirs(generated_py_dir, exist_ok=True)
+    open(os.path.join(generated_py_dir, "__init__.py"), "w").write("")
     for test_category, render_arg_list in all_render_args.items():
         template = env.get_template("template-test.py.j2")
         rendered = template.render(
