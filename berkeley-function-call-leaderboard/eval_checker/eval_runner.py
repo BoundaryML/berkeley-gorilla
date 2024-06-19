@@ -260,6 +260,7 @@ def single_ast_file_runner(
 
 #### Main runner function ####
 def runner(model_names, test_categories, api_sanity_check):
+
     # A flag to indicate if the API has been tested.
     # We should always test the API with ground truth first before running the executable tests.
     # Sometimes the API may not be working as expected and we want to catch that before running the evaluation to ensure the results are accurate.
@@ -278,6 +279,7 @@ def runner(model_names, test_categories, api_sanity_check):
 
     # Traverse each subdirectory
     for subdir in subdirs:
+
         model_name = subdir.split(INPUT_PATH)[1]
         if model_names is not None and model_name not in model_names:
             continue
@@ -305,6 +307,7 @@ def runner(model_names, test_categories, api_sanity_check):
 
         # Find and process all JSON files in the subdirectory
         for model_result_json in glob.glob(json_files_pattern):
+
             if os.path.basename(model_result_json) == "result.json":
                 continue
 
