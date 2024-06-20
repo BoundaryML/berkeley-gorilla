@@ -7,11 +7,15 @@ import os
 import pandas as pd
 import matplotlib.pyplot as plt
 
-# cost factors in $ per 1M tokens
+# cost factor is $ per token
 cost_factors = {
   'gpt-3.5-turbo-0125': {
     'input_tokens': 0.5 * 1e-6,
     'output_tokens': 1.5 * 1e-6,
+  },
+  'gpt-4o-2024-05-13': {
+    'input_tokens': 5 * 1e-6,
+    'output_tokens': 15 * 1e-6,
   },
   'claude-3-haiku-20240307': {
     'input_tokens': 0.25 * 1e-6,
@@ -93,6 +97,8 @@ def yield_data() -> Iterator[TestSuite]:
         print(f"No results for {model}/{test_category}")
         continue
       latest_results_file = list(sorted(all_results_files))[-1]
+      # if model == 'claude-3-haiku-20240307':
+      #   latest_results_file = list(sorted(f for f in all_results_files if '19-09' in f))[-1]
 
 
       results_by_fn: defaultdict[str, dict[str, Any]] = defaultdict(lambda: {})
@@ -119,6 +125,9 @@ def yield_data() -> Iterator[TestSuite]:
           'bfcl.output_tokens': bfcl_data_by_category[test_category][idx]['output_token_count'],
           'bfcl.latency_ms': bfcl_data_by_category[test_category][idx]['latency'] * 1000,
         }
+        test_result['baml.output_tokens_per_sec'] = test_result['baml.output_tokens'] / test_result['baml.latency_ms'] * 1000
+        test_result['bfcl.output_tokens_per_sec'] = test_result['bfcl.output_tokens'] / test_result['bfcl.latency_ms'] * 1000
+
         test_result['baml.total_tokens'] = test_result['baml.input_tokens'] + test_result['baml.output_tokens']
         test_result['bfcl.total_tokens'] = test_result['bfcl.input_tokens'] + test_result['bfcl.output_tokens']
 

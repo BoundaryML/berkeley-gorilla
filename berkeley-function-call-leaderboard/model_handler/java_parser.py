@@ -1,5 +1,5 @@
 import json
-from tree_sitter import Language, Parser
+# from tree_sitter import Language, Parser
 
 # Language.build_library(
 #     # Store the library in the `build` directory

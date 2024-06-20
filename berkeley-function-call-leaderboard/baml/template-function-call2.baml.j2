@@ -36,18 +36,14 @@ class {{ baml_class.name }} {
 function {{ fn_name }}(unused: string) -> {{ output_type }} {
   client {{llm_client}}
   prompt #"
-  {% raw %}
+  {%- raw %}
   {{ _.role("system") }}
   {% endraw %}
-  Answer in this schema:
-  {% raw %}
-  {{ ctx.output_format(prefix=null) }}
-  {% endraw %}
+  Answer in this schema: {% raw %}{{ ctx.output_format(prefix=null) }}{% endraw %}
   
   {% raw %}
   {{ _.role("user") }}
   {% endraw %}
-  
   Question: {{ prompt }}
   "#
 }
