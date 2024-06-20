@@ -129,7 +129,7 @@ class OutputField:
 
 
 def main():
-    template = env.get_template("template-function-call.baml.j2")
+    template = env.get_template("template-function-call2.baml.j2")
 
     for f in os.listdir("baml_src"):
         if f.startswith("generated-"):

@@ -61,7 +61,7 @@ client<llm> GPT35Azure {
   }
 }
 
-client<llm> Claude {
+client<llm> ClaudeHaiku {
   provider anthropic
   options {
     model claude-3-haiku-20240307

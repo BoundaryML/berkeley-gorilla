@@ -1,0 +1,60 @@
+// From {{ filename }}:{{ lineno }}
+{{ original_data | prepend_slashes }}
+
+{% for fn_call in fn_calls %}
+enum {{ fn_call.output_type }}_TypeName {
+  Value @alias("{{ fn_call.fn_id }}")
+}
+
+class {{ fn_call.output_type }} {
+  meta {{ fn_call.output_type }}_TypeName? @description("{{ fn_call.description }}") @alias("function_name")
+  {% for f in fn_call.output_fields %}
+  {{ f.field_name }} {{ f.field_type }} @description("{{ f.description }}{% if f.default %} (default: {{ f.default }}){%
+  endif %}")
+  {% endfor %}
+}
+{% endfor %}
+
+{% for baml_enum in enums %}
+enum {{ baml_enum.name }} {
+  {% for v_name, v_alias in baml_enum.enum_values %}
+  {{ v_name }} @alias("{{ v_alias }}")
+  {% endfor %}
+}
+{% endfor %}
+
+{% for baml_class in classes %}
+class {{ baml_class.name }} {
+  {% for f in baml_class.fields %}
+  {{ f.field_name }} {{ f.field_type }} @description("{{ f.description }}{% if f.default %} (default: {{ f.default }}){% endif %}")
+  {% endfor %}
+}
+{% endfor %}
+
+
+// TODO: BAML does not allow defining 0-arg functions
+function {{ fn_name }}(unused: string) -> {{ output_type }} {
+  client {{llm_client}}
+  prompt #"
+  {% raw %}
+  {{ _.role("system") }}
+  {% endraw %}
+  Answer in this schema:
+  {% raw %}
+  {{ ctx.output_format(prefix=null) }}
+  {% endraw %}
+  
+  {% raw %}
+  {{ _.role("user") }}
+  {% endraw %}
+  
+  Question: {{ prompt }}
+  "#
+}
+
+test Test_{{ fn_name }} {
+  functions [{{ fn_name }}]
+  args {
+    unused ""
+  }
+}
