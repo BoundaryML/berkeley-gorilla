@@ -103,8 +103,10 @@ if __name__ == "__main__":
                 result_to_write = {
                     "idx": index,
                     "result": result,
+                    "prompt": metadata["prompt"],
                     "input_token_count": metadata["input_tokens"],
                     "output_token_count": metadata["output_tokens"],
                     "latency": metadata["latency"],
+                    
                 }
                 handler.write(result_to_write, file_to_open)
