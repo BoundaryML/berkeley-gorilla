@@ -44,6 +44,12 @@ COLUMNS = [
 
 # Note that we don't need to substitute `_` with `/` in the model name here.
 MODEL_METADATA_MAPPING = {
+    "mistral": [
+        "mistral",
+        "http://link",
+        "mistral",
+        "open-source",
+    ],
     "gpt-4o-2024-05-13-FC": [
         "GPT-4o-2024-05-13 (FC)",
         "https://openai.com/index/hello-gpt-4o/",
@@ -349,7 +355,7 @@ MODEL_METADATA_MAPPING = {
         "https://huggingface.co/Snowflake/snowflake-arctic-instruct",
         "Snowflake",
         "apache-2.0",
-    ]
+    ],
 }
 
 INPUT_PRICE_PER_MILLION_TOKEN = {

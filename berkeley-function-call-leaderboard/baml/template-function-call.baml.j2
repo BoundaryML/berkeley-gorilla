@@ -1,0 +1,69 @@
+// From {{ filename }}:{{ lineno }}
+{{ original_data | prepend_slashes }}
+
+{% for fn_call in fn_calls %}
+enum {{ fn_call.output_type }}_TypeName {
+  Value @alias("{{ fn_call.fn_id }}")
+}
+
+class {{ fn_call.output_type }} {
+  meta {{ fn_call.output_type }}_TypeName? @description("{{ fn_call.description }}") @alias("function_name")
+  {% for f in fn_call.output_fields %}
+  {{ f.field_name }} {{ f.field_type }} @description("{{ f.description }}{% if f.default %} (default: {{ f.default }}){%
+  endif %}")
+  {% endfor %}
+}
+{% endfor %}
+
+{% for baml_enum in enums %}
+enum {{ baml_enum.name }} {
+  {% for v_name, v_alias in baml_enum.enum_values %}
+  {{ v_name }} @alias("{{ v_alias }}")
+  {% endfor %}
+}
+{% endfor %}
+
+{% for baml_class in classes %}
+class {{ baml_class.name }} {
+  {% for f in baml_class.fields %}
+  {{ f.field_name }} {{ f.field_type }} @description("{{ f.description }}{% if f.default %} (default: {{ f.default }}){% endif %}")
+  {% endfor %}
+}
+{% endfor %}
+
+
+// TODO: BAML does not allow defining 0-arg functions
+function {{ fn_name }}(unused: string) -> {{ output_type }} {
+  client {{llm_client}}
+  prompt #"
+  {% raw %}
+  {{ _.role("system") }}
+  {% endraw %}
+
+  You are an expert in composing functions. You are given a question and a set of possible functions.
+  Based on the question, you will need to make one or more function/tool calls to achieve the purpose.
+  If none of the function can be used, point it out. If the given question lacks the parameters required by the function,
+  also point it out. You should only return the function call in tools call sections.
+
+  {% raw %}
+  {{ _.role("user") }}
+  {% endraw %}
+
+  Question: {{ prompt }}
+
+  Here is the function to invoke:
+
+  {% raw %}
+  {{ ctx.output_format(prefix=null) }}
+  {% endraw %}
+
+  Function args in JSON format:
+  "#
+}
+
+test Test_{{ fn_name }} {
+  functions [{{ fn_name }}]
+  args {
+    unused ""
+  }
+}

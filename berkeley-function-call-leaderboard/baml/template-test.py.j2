@@ -1,0 +1,140 @@
+from collections import defaultdict
+from datetime import datetime
+from enum import Enum
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from termcolor import colored
+
+import asyncio
+import json
+import logging
+import os
+import sys
+import threading
+import traceback
+
+from baml_client import b, types
+from baml_client.tracing import trace, set_tags, flush
+
+POSSIBLE_ANSWERS_DIR = "../data/possible_answer"
+POSSIBLE_ANSWERS = {}
+MAX_CONCURRENCY = asyncio.Semaphore(int(os.environ['TEST_CONCURRENCY']))
+
+set_tags(test_category='{{test_category}}')
+
+
+for fname in os.listdir(POSSIBLE_ANSWERS_DIR):
+  for lineno, line in enumerate(open(f"{POSSIBLE_ANSWERS_DIR}/{fname}").readlines(), start=1):
+      possible_by_fieldname_by_funcid = json.loads(line)
+      try:
+
+        for fn_id in possible_by_fieldname_by_funcid:
+            funcs = possible_by_fieldname_by_funcid[fn_id]
+            #if isinstance(funcs, list):
+              #for fn in funcs:
+            for fieldname in possible_by_fieldname_by_funcid[fn_id]:
+                #print(possible_by_fieldname_by_funcid[fn_id][fieldname], '----------', fn_id, '----------', fieldname)
+                if "" in possible_by_fieldname_by_funcid[fn_id][fieldname]:
+                    possible_by_fieldname_by_funcid[fn_id][fieldname].append(None)
+                    possible_by_fieldname_by_funcid[fn_id][fieldname].append([])
+
+        POSSIBLE_ANSWERS[(fname, lineno)] = possible_by_fieldname_by_funcid
+      except Exception as e:
+          print(f"Error loading {fname}:{lineno}: {e}")
+          print(json.dumps(possible_by_fieldname_by_funcid, indent=2))
+          raise
+
+def resolve_enums(maybe_enum, enums):
+  if isinstance(maybe_enum, list):
+    return [resolve_enums(e, enums) for e in maybe_enum]
+  if isinstance(maybe_enum, Enum):
+    return enums[type(maybe_enum)][maybe_enum.value]
+  return maybe_enum
+
+async def run_all_tests():
+
+  results = await asyncio.gather(
+    {% for t in tests %}baml_{{t.fn_name}}(),{%- endfor %}
+    return_exceptions=True,
+  )
+
+  result_count = len(results)
+  pass_count = len([r for r in results if not isinstance(r, Exception)])
+  fail_count = result_count - pass_count
+
+  stats = {
+    "llm_client": "{{llm_client}}",
+    "test_category": "{{test_category}}",
+    "result_count": result_count,
+    "pass_count": pass_count,
+    "fail_count": fail_count,
+    "pass_rate": pass_count / result_count
+  }
+  print("""Final results for {{test_category}}:
+  {result_count} total
+  {pass_count} passed
+  {fail_count} failed
+  {pass_rate:.2%} pass rate
+""".format(**stats))
+
+  flush()
+
+{% for t in tests %}
+@trace
+async def baml_{{t.fn_name}}():
+  """{{t.filename}}:{{t.lineno}}:{{t.fn_id}}"""
+
+  #print = lambda *args, **kwargs: None
+
+  async with MAX_CONCURRENCY:
+    possible_answers = POSSIBLE_ANSWERS[("{{t.filename}}", {{t.lineno}})]
+    try:
+      enums = {
+        {% for e in t.enums %}
+          types.{{e.name}}: {
+          {% for enum_id, enum_value in e.enum_values %}
+            "{{enum_id}}": "{{enum_value}}",
+          {% endfor %}
+          },
+        {% endfor %}
+      }
+
+    {% if 'parallel' in t.test_category %}
+      actual = await b.{{t.fn_name}}("{{t.fn_name}}")
+      {% for fn_call in t.fn_calls %}
+      if isinstance(actual, types.{{ fn_call.output_type }}):
+        #print(f"{colored("{{t.fn_name}}", "white")}: Resolved to {{ fn_call.fn_id }}")
+        assert "{{ fn_call.fn_id }}" in possible_answers.keys(), f"LLM returned {{ fn_call.fn_id }}\nExpected: any of {possible_answers.keys()}\nActual: {actual}"
+        expected = possible_answers["{{ fn_call.fn_id }}"]
+        {%- for f in fn_call.output_fields %}
+        assert resolve_enums(actual.{{f.field_name}}, enums) in expected["{{f.field_name}}"], f"Field: {{f.field_name}}\nExpected: any of {expected["{{f.field_name}}"]}\nActual: {actual}"
+        {%- endfor %}
+      {% endfor %}
+    {% else %}
+      actual_all = await b.{{t.fn_name}}("{{t.fn_name}}")
+      answer_counter = defaultdict(lambda: 0)
+      for actual in actual_all:
+        {% for fn_call in t.fn_calls %}
+        if isinstance(actual, types.{{ fn_call.output_type }}):
+          #print(f"{colored("{{t.fn_name}}", "white")}: Resolved to {{ fn_call.fn_id }}")
+          expected = possible_answers.get("{{ fn_call.fn_id }}", None)
+          answer_counter["{{ fn_call.fn_id }}"] += 1
+          i = answer_counter["{{ fn_call.fn_id }}"]
+          if expected is None:
+            expected = possible_answers.get(f"{{ fn_call.fn_id }} {i}", None)
+          if expected is None:
+            expected = possible_answers.get(f"{{ fn_call.fn_id }}_{i}", None)
+          if expected is None:
+            assert f"{{ fn_call.fn_id }}_{i}" in possible_answers.keys(), f"LLM returned {{ fn_call.fn_id }}\nExpected: any of {possible_answers.keys()}\nActual@{i}: {actual}\nActual all: {actual_all}"
+          {%- for f in fn_call.output_fields %}
+          assert resolve_enums(actual.{{f.field_name}}, enums) in expected["{{f.field_name}}"], f"Field: {{f.field_name}}\nExpected: any of {expected["{{f.field_name}}"]}\nActual@{i}: {actual}\nActual all: {actual_all}"
+          {%- endfor %}
+        {% endfor %}
+    {% endif %}
+    except Exception as e:
+      print(f"{colored("{{t.fn_name}}", "red")}: Error in {{t.fn_name}}:\n{traceback.format_exc()}")
+      raise
+    return "success"
+{% endfor %}
+
+if __name__ == '__main__':
+    asyncio.run(run_all_tests())
