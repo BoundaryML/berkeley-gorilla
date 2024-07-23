@@ -24,16 +24,33 @@ class BaseHandler:
         # This method takes raw model output and convert it to standard execute checker input.
         pass
 
-    def write(self, result):
+    def result_directory(self):
         model_name_dir = self.model_name.replace("/", "_")
-        os.makedirs(f"./result/{model_name_dir}", exist_ok=True)
+        return f"./result/{model_name_dir}"
+
+    def result_file(self, test_category):
+        return f"{self.result_directory()}/gorilla_openfunctions_v1_test_{test_category}_result.json"
+
+    def write(self, result):
+        os.makedirs(self.result_directory(), exist_ok=True)
         
         if type(result) is dict:
             result = [result]
             
         for entry in result:
             test_category = entry["id"].rsplit("_", 1)[0]
-            file_to_write = f"./result/{model_name_dir}/gorilla_openfunctions_v1_test_{test_category}_result.json"
+            file_to_write = self.result_file(test_category)
             
             with open(file_to_write, "a+") as f:
                 f.write(json.dumps(entry) + "\n")
+
+    def write_sorted(self, test_category):
+        # Load the files
+        with open(self.result_file(test_category), "r+") as f:
+            data = f.readlines()
+            # Sort the data by id
+            data = sorted(data, key=lambda x: json.loads(x)["id"])
+            # Write the sorted data back to the file
+            f.seek(0)
+            f.writelines(data)
+            f.truncate()

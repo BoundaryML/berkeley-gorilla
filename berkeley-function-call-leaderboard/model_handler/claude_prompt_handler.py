@@ -1,3 +1,4 @@
+from typing import Any
 from model_handler.handler import BaseHandler
 from model_handler.model_style import ModelStyle
 from model_handler.utils import (
@@ -15,7 +16,8 @@ from model_handler.constant import (
     GORILLA_TO_PYTHON,
 )
 import os, time
-from anthropic import Anthropic
+from anthropic import Anthropic, AsyncAnthropic
+from anthropic.types.message import Message
 
 
 class ClaudePromptingHandler(BaseHandler):
@@ -24,7 +26,41 @@ class ClaudePromptingHandler(BaseHandler):
         self.model_style = ModelStyle.Anthropic_Prompt
 
         self.client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        self.async_client = AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
+    def _build_request(self, prompt, functions, test_category):
+        prompt = augment_prompt_by_languge(prompt, test_category)
+        functions = language_specific_pre_processing(functions, test_category)
+        if "FC" not in self.model_name:
+            return dict(
+                model=self.model_name,
+                max_tokens=self.max_tokens,
+                temperature=self.temperature,
+                top_p=self.top_p,
+                system=SYSTEM_PROMPT_FOR_CHAT_MODEL,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": USER_PROMPT_FOR_CHAT_MODEL.format(
+                            user_prompt=prompt, functions=str(functions)
+                        ),
+                    }
+                ],
+            ), None
+        else:
+            input_tool = convert_to_tool(
+                functions, GORILLA_TO_PYTHON, self.model_style, test_category, True
+            )
+            system_prompt = construct_tool_use_system_prompt(input_tool)
+            return dict(
+                model=self.model_name.strip("-FC"),
+                max_tokens=self.max_tokens,
+                temperature=self.temperature,
+                top_p=self.top_p,
+                system=system_prompt,
+                messages=[{"role": "user", "content": prompt}],
+            ), input_tool
+    
     def _get_claude_function_calling_response(self, prompt, functions, test_category):
         input_tool = convert_to_tool(
             functions, GORILLA_TO_PYTHON, self.model_style, test_category
@@ -79,41 +115,62 @@ class ClaudePromptingHandler(BaseHandler):
         metadata["latency"] = latency
         return result, metadata
 
-    def inference(self, prompt, functions, test_category):
-        prompt = augment_prompt_by_languge(prompt, test_category)
-        if "FC" in self.model_name:
-            functions = language_specific_pre_processing(functions, test_category)
-            result, metadata = self._get_claude_function_calling_response(
-                prompt, functions, test_category
-            )
-            return result, metadata
-        else:
-            start = time.time()
-            functions = language_specific_pre_processing(
-                functions, test_category
-            )
-            response = self.client.messages.create(
-                model=self.model_name,
-                max_tokens=self.max_tokens,
-                temperature=self.temperature,
-                top_p=self.top_p,
-                system=SYSTEM_PROMPT_FOR_CHAT_MODEL,
-                messages=[
-                    {
-                        "role": "user",
-                        "content": USER_PROMPT_FOR_CHAT_MODEL.format(
-                            user_prompt=prompt, functions=str(functions)
-                        ),
-                    }
-                ],
-            )
-            latency = time.time() - start
-            metadata = {}
-            metadata["input_tokens"] = response.usage.input_tokens
-            metadata["output_tokens"] = response.usage.output_tokens
-            metadata["latency"] = latency
+    def _handle_response(self, input_tools: Any, response: Message, latency: float):
+        if "FC" not in self.model_name:
             result = response.content[0].text
+        else:
+            result = []
+            if (
+                "invokes"
+                not in _function_calls_valid_format_and_invoke_extraction(
+                    response.content[0].text
+                ).keys()
+            ):
+                return "Error", {"input_tokens": 0, "output_tokens": 0, "latency": latency}
+            for invoked_function in _function_calls_valid_format_and_invoke_extraction(
+                response.content[0].text
+            )["invokes"]:
+                name = invoked_function["tool_name"]
+                select_func = None
+                for func in input_tools:
+                    if func["name"] == name:
+                        select_func = func
+                        break
+                if select_func is None:
+                    result.append({})
+                    continue
+                param_dict = {}
+                for param in invoked_function["parameters_with_values"]:
+                    param_name = param[0]
+                    param_value = param[1]
+                    try:
+                        param_type = select_func["parameters"]["properties"][param_name][
+                            "type"
+                        ]
+                    except:
+                        param_type = "str"
+                    param_value = _convert_value(param_value, param_type)
+                    param_dict[param_name] = param_value
+                result.append({name: param_dict})
+        metadata = {}
+        metadata["input_tokens"] = response.usage.input_tokens
+        metadata["output_tokens"] = response.usage.output_tokens
+        metadata["latency"] = latency
         return result, metadata
+
+    def inference(self, prompt, functions, test_category):
+        params, input_tools = self._build_request(prompt, functions, test_category)
+        start = time.time()
+        response: Message = self.client.messages.create(**params)
+        latency = time.time() - start
+        return self._handle_response(input_tools, response, latency)
+    
+    async def async_inference(self, prompt, functions, test_category):
+        params, input_tools = self._build_request(prompt, functions, test_category)
+        start = time.time()
+        response: Message = await self.async_client.messages.create(**params)
+        latency = time.time() - start
+        return self._handle_response(input_tools, response, latency)
 
     def decode_ast(self, result, language="Python"):
         if "FC" in self.model_name:
