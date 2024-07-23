@@ -13,7 +13,8 @@ from model_handler.constant import (
     USER_PROMPT_FOR_CHAT_MODEL,
     SYSTEM_PROMPT_FOR_CHAT_MODEL,
 )
-from openai import OpenAI
+from openai import OpenAI, AsyncOpenAI
+from openai.types.chat import ChatCompletion
 import os, time, json
 
 
@@ -22,8 +23,9 @@ class OpenAIHandler(BaseHandler):
         super().__init__(model_name, temperature, top_p, max_tokens)
         self.model_style = ModelStyle.OpenAI
         self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        self.async_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-    def inference(self, prompt,functions,test_category):
+    def _build_request(self, prompt,functions,test_category):
         if "FC" not in self.model_name:
             prompt = augment_prompt_by_languge(prompt,test_category)
             functions = language_specific_pre_processing(functions,test_category)
@@ -39,16 +41,13 @@ class OpenAIHandler(BaseHandler):
                     ),
                 },
             ]
-            start_time = time.time()
-            response = self.client.chat.completions.create(
+            return dict(
                 messages=message,
                 model=self.model_name,
                 temperature=self.temperature,
                 max_tokens=self.max_tokens,
-                top_p=self.top_p,
+                top_p=self.top_p
             )
-            latency = time.time() - start_time
-            result = response.choices[0].message.content
         else:
             prompt = augment_prompt_by_languge(prompt, test_category)
             functions = language_specific_pre_processing(functions, test_category)
@@ -58,9 +57,8 @@ class OpenAIHandler(BaseHandler):
             oai_tool = convert_to_tool(
                 functions, GORILLA_TO_OPENAPI, self.model_style, test_category, True
             )
-            start_time = time.time()
             if len(oai_tool) > 0:
-                response = self.client.chat.completions.create(
+                return dict(
                     messages=message,
                     model=self.model_name.replace("-FC", ""),
                     temperature=self.temperature,
@@ -69,14 +67,18 @@ class OpenAIHandler(BaseHandler):
                     tools=oai_tool,
                 )
             else:
-                response = self.client.chat.completions.create(
+                return dict(
                     messages=message,
                     model=self.model_name.replace("-FC", ""),
                     temperature=self.temperature,
                     max_tokens=self.max_tokens,
                     top_p=self.top_p,
                 )
-            latency = time.time() - start_time
+            
+    def _handle_response(self, response: ChatCompletion, latency: float):
+        if "FC" not in self.model_name:
+            result = response.choices[0].message.content
+        else:
             try:
                 result = [
                     {func_call.function.name: func_call.function.arguments}
@@ -88,8 +90,30 @@ class OpenAIHandler(BaseHandler):
         metadata["input_tokens"] = response.usage.prompt_tokens
         metadata["output_tokens"] = response.usage.completion_tokens
         metadata["latency"] = latency
-        return result,metadata
-    
+        return result, metadata
+
+    def inference(self, prompt,functions,test_category):
+        params = self._build_request(prompt,functions,test_category)
+        start_time = time.time()
+        try:
+            response: ChatCompletion = self.client.chat.completions.create(**params)
+        except Exception:
+            latency = time.time() - start_time
+            return "Error", {"input_tokens": 0, "output_tokens": 0, "latency": latency}
+        latency = time.time() - start_time
+        return self._handle_response(response, latency)
+
+    async def async_inference(self, prompt,functions,test_category):
+        params = self._build_request(prompt,functions,test_category)
+        start_time = time.time()
+        try:
+            response: ChatCompletion = await self.async_client.chat.completions.create(**params)
+        except Exception:
+            latency = time.time() - start_time
+            return "Error", {"input_tokens": 0, "output_tokens": 0, "latency": latency}
+        latency = time.time() - start_time        
+        return self._handle_response(response, latency)
+
     def decode_ast(self,result,language="Python"):
         if "FC" not in self.model_name:
             decoded_output = ast_parse(result,language)

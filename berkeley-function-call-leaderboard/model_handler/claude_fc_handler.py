@@ -2,8 +2,8 @@ import json
 import os
 import time
 
-from anthropic import Anthropic
-from anthropic.types import TextBlock, ToolUseBlock
+from anthropic import Anthropic, AsyncAnthropic
+from anthropic.types import TextBlock, ToolUseBlock, Message
 from model_handler.claude_prompt_handler import ClaudePromptingHandler
 from model_handler.constant import GORILLA_TO_OPENAPI
 from model_handler.handler import BaseHandler
@@ -23,28 +23,32 @@ class ClaudeFCHandler(BaseHandler):
         self.model_style = ModelStyle.Anthropic_Prompt
 
         self.client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        self.async_client = AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+
+    def _build_request(self, prompt, functions, test_category):
+        prompt = augment_prompt_by_languge(prompt, test_category)
+        functions = language_specific_pre_processing(functions, test_category)
+        if type(functions) is not list:
+            functions = [functions]
+        claude_tool = convert_to_tool(
+            functions, GORILLA_TO_OPENAPI, self.model_style, test_category, True
+        )
+        message = [{"role": "user", "content": prompt}]
+        return dict(
+            model=self.model_name.strip("-FC"),
+            max_tokens=self.max_tokens,
+            tools=claude_tool,
+            messages=message,
+        )
 
     def inference(self, prompt, functions, test_category):
         if "FC" not in self.model_name:
             handler = ClaudePromptingHandler(self.model_name, self.temperature, self.top_p, self.max_tokens)
             return handler.inference(prompt, functions, test_category)
         else:
-            prompt = augment_prompt_by_languge(prompt, test_category)
-            functions = language_specific_pre_processing(functions, test_category)
-            if type(functions) is not list:
-                functions = [functions]
-            claude_tool = convert_to_tool(
-                functions, GORILLA_TO_OPENAPI, self.model_style, test_category, True
-            )
-            message = [{"role": "user", "content": prompt}]
+            params = self._build_request(prompt, functions, test_category)
             start_time = time.time()
-
-            response = self.client.messages.create(
-                model=self.model_name.strip("-FC"),
-                max_tokens=self.max_tokens,
-                tools=claude_tool,
-                messages=message,
-            )
+            response: Message = self.client.messages.create(**params)
             latency = time.time() - start_time
             text_outputs = []
             tool_call_outputs = []
@@ -55,6 +59,26 @@ class ClaudeFCHandler(BaseHandler):
                     tool_call_outputs.append({content.name: json.dumps(content.input)})
             result =  tool_call_outputs if tool_call_outputs else text_outputs[0]
             return result, {"input_tokens": response.usage.input_tokens, "output_tokens": response.usage.output_tokens, "latency": latency}
+
+    async def async_inference(self, prompt, functions, test_category):
+        if "FC" not in self.model_name:
+            handler = ClaudePromptingHandler(self.model_name, self.temperature, self.top_p, self.max_tokens)
+            return await handler.async_inference(prompt, functions, test_category)
+        else:
+            params = self._build_request(prompt, functions, test_category)
+            start_time = time.time()
+            response: Message = await self.async_client.messages.create(**params)
+            latency = time.time() - start_time
+            text_outputs = []
+            tool_call_outputs = []
+            for content in response.content:
+                if isinstance(content, TextBlock):
+                    text_outputs.append(content.text)
+                elif isinstance(content, ToolUseBlock):
+                    tool_call_outputs.append({content.name: json.dumps(content.input)})
+            result =  tool_call_outputs if tool_call_outputs else text_outputs[0]
+            return result, {"input_tokens": response.usage.input_tokens, "output_tokens": response.usage.output_tokens, "latency": latency}
+
 
     def decode_ast(self,result,language="Python"):
         if "FC" not in self.model_name:
