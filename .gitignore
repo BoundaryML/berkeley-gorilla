@@ -7,6 +7,7 @@ dist
 .vscode
 .idea
 .env
+.envrc
 .editorconfig
 .DS_Store
 **/*.pyc
@@ -39,3 +40,6 @@ berkeley-function-call-leaderboard/score/
 
 .direnv/
 .venv
+
+# Ignore baml generated files
+baml_client

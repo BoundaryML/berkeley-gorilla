@@ -13,7 +13,8 @@ from model_handler.utils import (
     language_specific_pre_processing,
 )
 from mistralai.client import MistralClient
-from mistralai.models.chat_completion import ChatMessage
+from mistralai.async_client import MistralAsyncClient
+from mistralai.models.chat_completion import ChatMessage, ChatCompletionResponse
 import os, time, json
 
 
@@ -23,8 +24,9 @@ class MistralHandler(BaseHandler):
         self.model_style = ModelStyle.Mistral
 
         self.client = MistralClient(api_key=os.getenv("MISTRAL_API_KEY"))
+        self.async_client = MistralAsyncClient(api_key=os.getenv("MISTRAL_API_KEY"))
 
-    def inference(self, prompt, functions, test_category):
+    def _build_request(self, prompt, functions, test_category):
         prompt = augment_prompt_by_languge(prompt, test_category)
         if "FC" in self.model_name:
             functions = language_specific_pre_processing(functions, test_category)
@@ -34,27 +36,18 @@ class MistralHandler(BaseHandler):
             message = [
                 ChatMessage(role="user", content=prompt),
             ]
-            start = time.time()
             if "Any" in self.model_name:
                 tool_choice = "any"
             else:
                 tool_choice = "auto"
-            chat_response = self.client.chat(
+            return dict(
                 model=self.model_name.replace("-FC-Any", "").replace("-FC-Auto", ""),
                 messages=message,
                 tools=tool,
                 tool_choice=tool_choice,
                 temperature=self.temperature,
                 top_p=self.top_p,
-            )
-            latency = time.time() - start
-            try:
-                result = [
-                    {func_call.function.name: func_call.function.arguments}
-                    for func_call in chat_response.choices[0].message.tool_calls
-                ]
-            except:
-                result = chat_response.choices[0].message.content
+            ), { "messages": [m.model_dump() for m in message], "tools": tool }
         else:
             functions = language_specific_pre_processing(
                 functions, test_category
@@ -68,21 +61,54 @@ class MistralHandler(BaseHandler):
                     ),
                 ),
             ]
-            start = time.time()
-            chat_response = self.client.chat(
+            return dict(
                 model=self.model_name,
                 messages=message,
                 temperature=self.temperature,
                 top_p=self.top_p,
-            )
-            latency = time.time() - start
+            ), { "messages": [m.model_dump() for m in message] }
+    
+    def _handle_response(self, chat_response: ChatCompletionResponse, latency, prompt):
+        if "FC" in self.model_name:
+            try:
+                result = [
+                    {func_call.function.name: func_call.function.arguments}
+                    for func_call in chat_response.choices[0].message.tool_calls
+                ]
+            except:
+                result = chat_response.choices[0].message.content
+        else:
             result = chat_response.choices[0].message.content
         metadata = {
             "input_tokens": chat_response.usage.prompt_tokens,
             "output_tokens": chat_response.usage.completion_tokens,
             "latency": latency,
+            "prompt": prompt
         }
         return result, metadata
+
+    def inference(self, prompt, functions, test_category):
+        params, prompt = self._build_request(prompt, functions, test_category)
+        start_time = time.time()
+        try:
+            chat_response = self.client.chat(**params)
+        except Exception:
+            latency = time.time() - start_time
+            return "Error", {"input_tokens": 0, "output_tokens": 0, "latency": latency, "prompt": prompt}
+        latency = time.time() - start_time
+        return self._handle_response(chat_response, latency, prompt)
+
+    async def async_inference(self, prompt, functions, test_category):
+        params, prompt = self._build_request(prompt, functions, test_category)
+        start_time = time.time()
+        try:
+            chat_response = await self.async_client.chat(**params)
+        except Exception as e:
+            print("ERROR:", e)
+            latency = time.time() - start_time
+            return "Error", {"input_tokens": 0, "output_tokens": 0, "latency": latency, "prompt": prompt}
+        latency = time.time() - start_time
+        return self._handle_response(chat_response, latency, prompt)
 
     def decode_ast(self, result, language="Python"):
         if "FC" in self.model_name:

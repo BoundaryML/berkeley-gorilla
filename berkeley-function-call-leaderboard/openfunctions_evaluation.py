@@ -219,7 +219,8 @@ def find_test_cases(file_to_open: str, model: str) -> Tuple[List[Any], List[int]
                 # Read the result file to find the number of test cases that have been tested.
                 line = json.loads(line)
                 index = line["idx"]
-                num_existing_result.append(index)
+                if line["input_token_count"] > 0:
+                    num_existing_result.append(index)
     return test_cases, num_existing_result
 
 

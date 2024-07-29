@@ -2,6 +2,7 @@ from model_handler.model_style import ModelStyle
 import json, os
 
 
+
 class BaseHandler:
     model_name: str
     model_style: ModelStyle

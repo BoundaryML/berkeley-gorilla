@@ -42,6 +42,30 @@ COLUMNS = [
 ]
 
 MODEL_METADATA_MAPPING = {
+    "gpt-4o-mini-2024-07-18-BAML": [
+        "GPT-4o-mini-2024-07-18 (BAML)",
+        "https://boundaryml.com/",
+        "BAML + OpenAI",
+        "Proprietary",
+    ],
+    "gpt-4o-mini-2024-07-18-FC": [
+        "GPT-4o-mini-2024-07-18 (FC)",
+        "https://openai.com/index/gpt-4o-mini-advancing-cost-efficient-intelligence/",
+        "OpenAI",
+        "Proprietary",
+    ],
+    "gpt-4o-mini-2024-07-18": [
+        "GPT-4o-mini-2024-07-18 (Prompt)",
+        "https://openai.com/index/gpt-4o-mini-advancing-cost-efficient-intelligence/",
+        "OpenAI",
+        "Proprietary",
+    ],
+    "gpt-4o-2024-05-13-BAML": [
+        "GPT-4o-2024-05-13 (BAML)",
+        "https://boundaryml.com/",
+        "BAML + OpenAI",
+        "Proprietary",
+    ],
     "gpt-4o-2024-05-13-FC": [
         "GPT-4o-2024-05-13 (FC)",
         "https://openai.com/index/hello-gpt-4o/",
@@ -114,6 +138,18 @@ MODEL_METADATA_MAPPING = {
         "Mistral AI",
         "Proprietary",
     ],
+    "ollama-mistral": [
+        "Mistral-7b (Prompt)",
+        "https://docs.mistral.ai/guides/model-selection/",
+        "Mistral AI",
+        "Open Source",
+    ],
+    "ollama-mistral-BAML": [
+        "Mistral-7b (BAML)",
+        "https://boundaryml.com/",
+        "Mistral AI",
+        "Open Source",
+    ],
     "mistral-small-2402": [
         "Mistral-Small-2402 (Prompt)",
         "https://docs.mistral.ai/guides/model-selection/",
@@ -138,6 +174,12 @@ MODEL_METADATA_MAPPING = {
         "Anthropic",
         "Proprietary",
     ],
+    "claude-3-haiku-20240307-BAML": [
+        "Claude-3-Haiku-20240307 (BAML)",
+        "https://boundaryml.com/",
+        "BAML + Anthropic",
+        "Proprietary",
+    ],
     "claude-3-haiku-20240307-FC": [
         "Claude-3-Haiku-20240307 (FC tools-2024-04-04)",
         "https://www.anthropic.com/news/claude-3-family",
@@ -150,6 +192,12 @@ MODEL_METADATA_MAPPING = {
         "Anthropic",
         "Proprietary",
     ],
+    "claude-3-5-sonnet-20240620-BAML": [
+        "Claude-3.5-Sonnet-20240620 (BAML)",
+        "https://boundaryml.com/",
+        "BAML + Anthropic",
+        "Proprietary",
+    ],
     "claude-3-5-sonnet-20240620-FC": [
         "Claude-3.5-Sonnet-20240620 (FC)",
         "https://www.anthropic.com/news/claude-3-5-sonnet",
@@ -160,6 +208,12 @@ MODEL_METADATA_MAPPING = {
         "Claude-3.5-Sonnet-20240620 (Prompt)",
         "https://www.anthropic.com/news/claude-3-5-sonnet",
         "Anthropic",
+        "Proprietary",
+    ],
+    "gpt-3.5-turbo-0125-BAML": [
+        "GPT-3.5-Turbo-0125 (BAML)",
+        "https://www.boundaryml.com/",
+        "BAML + OpenAI",
         "Proprietary",
     ],
     "gpt-3.5-turbo-0125-FC": [
@@ -347,6 +401,17 @@ MODEL_METADATA_MAPPING = {
         "https://huggingface.co/NousResearch/Hermes-2-Theta-Llama-3-70B",
         "NousResearch",
         "apache-2.0",
+    "ollama-llama3.1-BAML": [
+        "Meta-Llama-3-8B (BAML)",
+        "https://boundaryml.com/",
+        "BAML + Meta",
+        "Meta Llama 3 Community",
+    ],
+    "ollama-llama3.1": [
+        "Meta-Llama-3-8B (Prompt)",
+        "https://llama.meta.com/llama3",
+        "Meta",
+        "Meta Llama 3 Community",
     ],
     "meta-llama/Meta-Llama-3-8B-Instruct": [
         "Meta-Llama-3-8B-Instruct (Prompt)",
@@ -429,12 +494,16 @@ MODEL_METADATA_MAPPING = {
 }
 
 INPUT_PRICE_PER_MILLION_TOKEN = {
+    "claude-3-opus-20240229-BAML": 15,
     "claude-3-opus-20240229-FC": 15,
     "claude-3-opus-20240229": 15,
+    "claude-3-sonnet-20240229-BAML": 3,
     "claude-3-sonnet-20240229-FC": 3,
     "claude-3-sonnet-20240229": 3,
+    "claude-3-haiku-20240307-BAML": 0.25,
     "claude-3-haiku-20240307-FC": 0.25,
     "claude-3-haiku-20240307": 0.25,
+    "claude-3-5-sonnet-20240620-BAML": 3,
     "claude-3-5-sonnet-20240620-FC": 3,
     "claude-3-5-sonnet-20240620": 3,
     "claude-2.1": 8,
@@ -446,6 +515,10 @@ INPUT_PRICE_PER_MILLION_TOKEN = {
     "mistral-small-2402-FC-Auto": 1,
     "mistral-small-2402": 1,
     "mistral-tiny-2312": 0.25,
+    "gpt-4o-mini-2024-07-18-BAML": 0.15,
+    "gpt-4o-mini-2024-07-18-FC": 0.15,
+    "gpt-4o-mini-2024-07-18": 0.15,
+    "gpt-4o-2024-05-13-BAML": 5,
     "gpt-4o-2024-05-13-FC": 5,
     "gpt-4o-2024-05-13": 5,
     "gpt-4-1106-preview-FC": 10,
@@ -458,6 +531,7 @@ INPUT_PRICE_PER_MILLION_TOKEN = {
     "gpt-4-0613-FC": 30,
     "gpt-3.5-turbo-0125": 0.5,
     "gpt-3.5-turbo-0125-FC": 0.5,
+    "gpt-3.5-turbo-0125-BAML": 0.5,
     "gemini-1.0-pro": 0.5,
     "gemini-1.5-pro-preview-0409": 3.5,
     "gemini-1.5-pro-preview-0514": 3.5,
@@ -471,12 +545,16 @@ INPUT_PRICE_PER_MILLION_TOKEN = {
 }
 
 OUTPUT_PRICE_PER_MILLION_TOKEN = {
+    "claude-3-opus-20240229-BAML": 75,
     "claude-3-opus-20240229-FC": 75,
     "claude-3-opus-20240229": 75,
+    "claude-3-sonnet-20240229-BAML": 15,
     "claude-3-sonnet-20240229-FC": 15,
     "claude-3-sonnet-20240229": 15,
+    "claude-3-5-sonnet-20240620-BAML": 15,
     "claude-3-5-sonnet-20240620-FC": 15,
     "claude-3-5-sonnet-20240620": 15,
+    "claude-3-haiku-20240307-BAML": 1.25,
     "claude-3-haiku-20240307-FC": 1.25,
     "claude-3-haiku-20240307": 1.25,
     "claude-2.1": 24,
@@ -488,7 +566,12 @@ OUTPUT_PRICE_PER_MILLION_TOKEN = {
     "mistral-small-2402-FC-Any": 3,
     "mistral-small-2402-FC-Auto": 3,
     "mistral-tiny-2312": 0.25,
+    "gpt-4o-mini-2024-07-18-BAML": 0.6,
+    "gpt-4o-mini-2024-07-18-FC": 0.6,
+    "gpt-4o-mini-2024-07-18": 0.6,
+    "gpt-4o-2024-05-13": 15,
     "gpt-4o-2024-05-13-FC": 15,
+    "gpt-4o-2024-05-13-BAML": 15,
     "gpt-4o-2024-05-13": 15,
     "gpt-4-turbo-2024-04-09-FC": 30,
     "gpt-4-turbo-2024-04-09": 30,
@@ -500,6 +583,7 @@ OUTPUT_PRICE_PER_MILLION_TOKEN = {
     "gpt-4-0613-FC": 60,
     "gpt-3.5-turbo-0125": 1.5,
     "gpt-3.5-turbo-0125-FC": 1.5,
+    "gpt-3.5-turbo-0125-BAML": 1.5,
     "gemini-1.0-pro": 1.5,
     "gemini-1.5-pro-preview-0409": 10.50,
     "gemini-1.5-pro-preview-0514": 10.50,
@@ -603,6 +687,16 @@ def get_handler(model_name):
     return handler_map[model_name](model_name)
 
 
+class NumPyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.int64) or isinstance(obj, np.int32):
+            return int(obj)
+        if isinstance(obj, np.float64) or isinstance(obj, np.float32):
+            return float(obj)
+        if np.iscomplexobj(obj):
+            return abs(obj)
+        return json.JSONEncoder.default(self, obj)
+
 def write_list_of_dicts_to_file(filename, data, subdir=None):
     if subdir:
         # Ensure the subdirectory exists
@@ -614,10 +708,15 @@ def write_list_of_dicts_to_file(filename, data, subdir=None):
     # Write the list of dictionaries to the file in JSON format
     with open(filename, "w") as f:
         for i, entry in enumerate(data):
-            json_str = json.dumps(entry)
-            f.write(json_str)
-            if i < len(data) - 1:
-                f.write("\n")
+            try:
+                json_str = json.dumps(entry, cls=NumPyEncoder)
+                f.write(json_str)
+                if i < len(data) - 1:
+                    f.write("\n")
+            except Exception as e:
+                print(f"Error writing data to file: {e}")
+                print(f"Data that caused error: {entry}")
+                raise e
 
 
 def is_function_calling_format_output(decoded_output):
@@ -891,6 +990,10 @@ def generate_leaderboard_csv(leaderboard_table, output_path):
     data = []
     for model_name, value in leaderboard_table.items():
         model_name_escaped = model_name.replace("_", "/")
+
+        if '3-5-sonnet' in model_name_escaped:
+            print(model_name_escaped)
+            print(value.get('simple'))
 
         python_simple_ast = value.get("simple", {"accuracy": 0, "total_count": 0})
         python_multiple_ast = value.get(

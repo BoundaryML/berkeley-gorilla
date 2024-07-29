@@ -39,16 +39,21 @@ class ClaudeFCHandler(BaseHandler):
             max_tokens=self.max_tokens,
             tools=claude_tool,
             messages=message,
-        )
+            temperature=self.temperature,
+            top_p=self.top_p,
+        ), { "messages": message, "tools": claude_tool }
 
     def inference(self, prompt, functions, test_category):
         if "FC" not in self.model_name:
             handler = ClaudePromptingHandler(self.model_name, self.temperature, self.top_p, self.max_tokens)
             return handler.inference(prompt, functions, test_category)
         else:
-            params = self._build_request(prompt, functions, test_category)
+            params, prompt = self._build_request(prompt, functions, test_category)
             start_time = time.time()
-            response: Message = self.client.messages.create(**params)
+            try:
+                response: Message = self.client.messages.create(**params)
+            except Exception as e:
+                return "Error", { "input_tokens": 0, "output_tokens": 0, "latency": time.time() - start_time, "error": "Error in response from server", "prompt": prompt }
             latency = time.time() - start_time
             text_outputs = []
             tool_call_outputs = []
@@ -58,16 +63,19 @@ class ClaudeFCHandler(BaseHandler):
                 elif isinstance(content, ToolUseBlock):
                     tool_call_outputs.append({content.name: json.dumps(content.input)})
             result =  tool_call_outputs if tool_call_outputs else text_outputs[0]
-            return result, {"input_tokens": response.usage.input_tokens, "output_tokens": response.usage.output_tokens, "latency": latency}
+            return result, {"input_tokens": response.usage.input_tokens, "output_tokens": response.usage.output_tokens, "latency": latency, "prompt": prompt }
 
     async def async_inference(self, prompt, functions, test_category):
         if "FC" not in self.model_name:
             handler = ClaudePromptingHandler(self.model_name, self.temperature, self.top_p, self.max_tokens)
             return await handler.async_inference(prompt, functions, test_category)
         else:
-            params = self._build_request(prompt, functions, test_category)
+            params, prompt = self._build_request(prompt, functions, test_category)
             start_time = time.time()
-            response: Message = await self.async_client.messages.create(**params)
+            try:
+                response: Message = await self.async_client.messages.create(**params)
+            except Exception as e:
+                return "Error", { "input_tokens": 0, "output_tokens": 0, "latency": time.time() - start_time, "error": "Error in response from server", "prompt": prompt }
             latency = time.time() - start_time
             text_outputs = []
             tool_call_outputs = []
@@ -77,7 +85,7 @@ class ClaudeFCHandler(BaseHandler):
                 elif isinstance(content, ToolUseBlock):
                     tool_call_outputs.append({content.name: json.dumps(content.input)})
             result =  tool_call_outputs if tool_call_outputs else text_outputs[0]
-            return result, {"input_tokens": response.usage.input_tokens, "output_tokens": response.usage.output_tokens, "latency": latency}
+            return result, {"input_tokens": response.usage.input_tokens, "output_tokens": response.usage.output_tokens, "latency": latency, "prompt": prompt }
 
 
     def decode_ast(self,result,language="Python"):
