@@ -92,9 +92,16 @@ def collect_test_cases(test_filename_total, model_name):
             ) as f:
                 for line in f:
                     # Read the result file to find the number of test cases that have been tested.
-                    line = json.loads(line)
-                    index = line["id"]
-                    test_cases.pop(index)
+                    line = line.strip()
+                    if line:
+                        try:
+                            line = json.loads(line)
+                        except Exception as e:
+                            print(f"Error reading line: {line}")
+                            raise e
+
+                        index = line["id"]
+                        test_cases.pop(index)
 
         test_cases_total.extend(list(test_cases.values()))
     return test_cases_total
@@ -128,10 +135,12 @@ def generate_results_sync(handler, args, model_name, test_cases_total):
             result_to_write = {
                 "id": test_case["id"],
                 "result": result,
-                "input_token_count": metadata["input_tokens"],
-                "output_token_count": metadata["output_tokens"],
-                "latency": metadata["latency"],
+                "input_token_count": metadata.pop("input_tokens", None),
+                "output_token_count": metadata.pop("output_tokens", None),
+                "latency": metadata.pop("latency", None),
             }
+            for key, value in metadata.items():
+                result_to_write[key] = value
             handler.write(result_to_write)
 
 async def generate_results_parallel(handler, args, model_name, test_cases_total):
@@ -166,10 +175,12 @@ async def generate_results_parallel(handler, args, model_name, test_cases_total)
             result_to_write = {
                 "id": test_case["id"],
                 "result": result,
-                "input_token_count": metadata["input_tokens"],
-                "output_token_count": metadata["output_tokens"],
-                "latency": metadata["latency"],
+                "input_token_count": metadata.pop("input_tokens", None),
+                "output_token_count": metadata.pop("output_tokens", None),
+                "latency": metadata.pop("latency", None),
             }
+            for key, value in metadata.items():
+                result_to_write[key] = value
             handler.write(result_to_write)
 
         tasks = [run_inference(test_case) for test_case in test_cases_total]
@@ -253,5 +264,6 @@ if __name__ == "__main__":
                 asyncio.run(generate_results_parallel(handler, args, model_name, test_cases_total))
             else:
                 generate_results_sync(handler, args, model_name, test_cases_total)
-            for test_category in test_name_total:
-                handler.write_sorted(test_category) 
+        for test_category in test_name_total:
+            print(f"Writing sorted results for {model_name} on test category: {test_category}.")
+            handler.write_sorted(test_category) 

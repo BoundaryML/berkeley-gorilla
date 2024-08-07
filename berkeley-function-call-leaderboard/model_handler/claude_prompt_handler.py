@@ -183,6 +183,8 @@ class ClaudePromptingHandler(BaseHandler):
 
     def decode_ast(self, result, language="Python"):
         if "FC" in self.model_name:
+            if isinstance(result, str):
+                raise ValueError("Result should be a list of function calls")
             if language == "Python":
                 return result
             else:
@@ -205,6 +207,8 @@ class ClaudePromptingHandler(BaseHandler):
 
     def decode_execute(self, result):
         if "FC" in self.model_name:
+            if isinstance(result, str):
+                raise ValueError("Result should be a list of function calls")
             if type(result) == dict:
                 function_call_list = [result]
             else:

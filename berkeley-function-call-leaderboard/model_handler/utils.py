@@ -5,14 +5,15 @@ from model_handler.js_parser import parse_javascript_function_call
 from model_handler.constant import GORILLA_TO_OPENAPI, USE_COHERE_OPTIMIZATION
 
 
-def _cast_to_openai_type(properties, mapping, test_category):
+def _cast_to_openai_type(properties, mapping, test_category, strict):
     for key, value in properties.items():
         if "type" not in value:
             properties[key]["type"] = "string"
         else:
             var_type = value["type"]
             if mapping == GORILLA_TO_OPENAPI and var_type == "float":
-                properties[key]["format"] = "float"
+                if not strict:
+                    properties[key]["format"] = "float"
                 properties[key]["description"] += " This is a float type value."
             if var_type in mapping:
                 properties[key]["type"] = mapping[var_type]
@@ -29,7 +30,7 @@ def _cast_to_openai_type(properties, mapping, test_category):
         if properties[key]["type"] == "array" or properties[key]["type"] == "object":
             if "properties" in properties[key]:
                 properties[key]["properties"] = _cast_to_openai_type(
-                    properties[key]["properties"], mapping, test_category
+                    properties[key]["properties"], mapping, test_category, strict
                 )
             elif "items" in properties[key]:
                 properties[key]["items"]["type"] = mapping[
@@ -47,13 +48,13 @@ def _cast_to_openai_type(properties, mapping, test_category):
                     and "properties" in properties[key]["items"]
                 ):
                     properties[key]["items"]["properties"] = _cast_to_openai_type(
-                        properties[key]["items"]["properties"], mapping, test_category
+                        properties[key]["items"]["properties"], mapping, test_category, strict
                     )
     return properties
 
 
 def convert_to_tool(
-    functions, mapping, model_style, test_category
+    functions, mapping, model_style, test_category, strict=False
 ):
     oai_tool = []
     for item in functions:
@@ -70,9 +71,49 @@ def convert_to_tool(
             
         item["parameters"]["type"] = "object"
         item["parameters"]["properties"] = _cast_to_openai_type(
-            item["parameters"]["properties"], mapping, test_category
+            item["parameters"]["properties"], mapping, test_category, strict
         )
 
+        if model_style == ModelStyle.OpenAI and strict:
+            item['strict'] = strict
+            
+            def fix_schema(schema):
+                if "properties" in schema:
+                    if "required" not in schema:
+                        schema["required"] = []
+                    for key, value in schema["properties"].items():
+                        if "type" in value and value["type"] == "object":
+                            fix_schema(value)
+                        if "type" in value and value["type"] == "array":
+                            if "items" in value and "type" in value["items"] and value["items"]["type"] == "object":
+                                fix_schema(value["items"])
+
+                        if "default" in value:
+                            if "description" not in value:
+                                value["description"] = ""
+                            value["description"] += " The default value is: " + str(value["default"])
+                            del value["default"]
+
+                        if key not in schema["required"]:
+                            print(key + " is not in required")
+                            schema["required"].append(key)
+                            schema["properties"][key] = {
+                                "anyOf": [
+                                    value,
+                                    {"type": "null"},
+                                ]
+                            }
+                    schema["additionalProperties"] = False
+                return schema
+
+            fix_schema(item["parameters"])
+
+            for param_name, params in item["parameters"]["properties"].items():
+                if "default" in params:
+                    if "description" not in params:
+                        params["description"] = ""
+                    params["description"] += " The default value is: " + str(params["default"])
+                    del params["default"]
         if model_style == ModelStyle.Anthropic_FC:
             item["input_schema"] = item["parameters"]
             del item["parameters"]

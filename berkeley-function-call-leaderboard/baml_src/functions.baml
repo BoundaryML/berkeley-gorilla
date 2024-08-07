@@ -69,6 +69,21 @@ function ParallelMultipleFunctions(functions: Function[], query: string) -> Resp
     "#
 }
 
+
+function RelevanceFunction(functions: Function[], query: string) -> Response? {
+    client GPT35Turbo
+    prompt #"
+        Pretend you are trying to fill out an api request to a function called '{{ functions[0].name }}'. The goal is {{ functions[0].description }}
+
+        If a parameter isn't explicitly mentioned, don't assume any values unless its certain. If function '{{ functions[0].name }}' doesn't seem relevant, return null.
+
+        {{ ctx.output_format }}
+
+        {{ _.role('user') }}
+        Question: {{ query }}
+    "#
+}
+
 test TestName {
   functions [SimpleFunction]
   args {

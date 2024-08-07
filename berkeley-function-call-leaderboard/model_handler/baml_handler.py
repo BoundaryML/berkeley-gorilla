@@ -1,3 +1,4 @@
+import asyncio
 import json
 import time
 from typing import TypedDict, List, Dict, Literal, Union
@@ -155,6 +156,9 @@ class BAMLHandler(BaseHandler):
         self.cr.add_llm_client("Runner", provider, params)
         self.cr.set_primary("Runner")
 
+    def inference(self, prompt, functions, test_category):
+        return asyncio.run(self.async_inference(prompt, functions, test_category))
+
     async def async_inference(self, prompt, functions: List[Function], test_category):
         metadata = {
             "input_tokens": 0,
@@ -176,6 +180,10 @@ class BAMLHandler(BaseHandler):
                 # literal = tb.add_enum(random_name())
                 # literal.add_value(function["name"])
                 # tb.Response.add_property("function_name", literal.type().optional()).description(function["description"])
+                if 'relevance' in test_category:
+                    enm = tb.add_enum(random_name())
+                    enm.add_value(function["name"])
+                    tb.Response.add_property("function_name", enm.type()).description(function["description"])
                 for name, param in params['properties'].items():
                     prop = tb.Response.add_property(name, get_type(param, tb, name in params['required']))
                     if "description" in param:
@@ -186,7 +194,7 @@ class BAMLHandler(BaseHandler):
                 
                 rt, ctx = b.z_unstable_runtime(), b.z_unstable_ctx_manager()
                 raw = await rt.call_function(
-                    "SimpleFunction" if test_category == 'simple' else "ParallelFunction",
+                    "ParallelFunction" if 'parallel' in test_category else ("RelevanceFunction" if 'relevance' in test_category else "SimpleFunction"),
                     {
                         "functions": [{
                             "name": function["name"],
@@ -201,9 +209,19 @@ class BAMLHandler(BaseHandler):
 
                 response = update_metadata(metadata, raw)
                 if 'error' in metadata:
-                    result = []
+                    result = None
                 else:
-                    if test_category == 'simple':
+                    if test_category == 'relevance':
+                        if response is None:
+                            result = None
+                        else:
+                            response = Response.model_validate(response)
+                            result = [
+                                {
+                                    function['name']: response.model_dump_json(exclude_none=True)
+                                }
+                            ]
+                    elif test_category == 'simple':
                         response = Response.model_validate(response)
                         result = [
                             {
@@ -221,10 +239,10 @@ class BAMLHandler(BaseHandler):
                         ]
             except UnsupportedType as e:
                 metadata["error"] = str(e)
-                result = []
+                result = None
             except Exception as e:
                 metadata["error"] = str(e)
-                result = []                       
+                result = None                     
         elif is_multiple:
             tb = TypeBuilder()
             try:
@@ -251,7 +269,7 @@ class BAMLHandler(BaseHandler):
                 rt = b.z_unstable_runtime()
                 ctx = b.z_unstable_ctx_manager()
                 raw = await rt.call_function(
-                    "MultipleFunctions" if test_category == 'multiple_function' else "ParallelMultipleFunctions",
+                    "ParallelMultipleFunctions" if 'parallel' in test_category else "MultipleFunctions",
                     {
                         "functions": [
                             {
@@ -267,7 +285,7 @@ class BAMLHandler(BaseHandler):
                 )
                 response = update_metadata(metadata, raw)
                 if 'error' in metadata:
-                    result = []
+                    result = None
                 else:
                     if test_category == 'multiple_function':
                         response = Response.model_validate(response)                
@@ -287,10 +305,10 @@ class BAMLHandler(BaseHandler):
                         ]
             except UnsupportedType as e:
                 metadata["error"] = str(e)
-                result = []
+                result = None
             except Exception as e:
                 metadata["error"] = str(e)
-                result = []       
+                result = None     
         else:
             raise ValueError(f"Unknown test category: {test_category}")
 
@@ -299,6 +317,9 @@ class BAMLHandler(BaseHandler):
         return result, metadata
 
     def decode_ast(self, result, language="Python"):
+        if result is None:
+            raise ValueError("Result should be a list of function calls")
+
         decoded_output = []
         for invoked_function in result:
             if invoked_function:
@@ -320,6 +341,9 @@ class BAMLHandler(BaseHandler):
         return decoded_output
 
     def decode_execute(self, result):
+        if result is None:
+            raise ValueError("Result should be a list of function calls")
+        
         execution_list = []
         for invoked_function in result:
             if invoked_function:

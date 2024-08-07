@@ -50,7 +50,7 @@ class BaseHandler:
         with open(self.result_file(test_category), "r+") as f:
             data = f.readlines()
             # Sort the data by id
-            data = sorted(data, key=lambda x: json.loads(x)["id"])
+            data = sorted(data, key=lambda x: int(json.loads(x)["id"].rsplit("_", 1)[1]))
             # Write the sorted data back to the file
             f.seek(0)
             f.writelines(data)

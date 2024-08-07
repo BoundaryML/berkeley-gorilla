@@ -65,21 +65,22 @@ class OpenAIHandler(BaseHandler):
                 functions = [functions]
             message = [{"role": "user", "content": prompt}]
             oai_tool = convert_to_tool(
-                functions, GORILLA_TO_OPENAPI, self.model_style, test_category
+                functions, GORILLA_TO_OPENAPI, self.model_style, test_category, '-strict' in model_name
             )
             if len(oai_tool) > 0:
                 return dict(
                     messages=message,
-                    model=model_name.replace("-FC", ""),
+                    model=model_name.replace("-FC-strict", "").replace("-FC", ""),
                     temperature=self.temperature,
                     max_tokens=self.max_tokens,
                     top_p=self.top_p,
                     tools=oai_tool,
+                    parallel_tool_calls='parallel' in test_category
                 ), { "messages": message, "tools": oai_tool }
             else:
                 return dict(
                     messages=message,
-                    model=model_name.replace("-FC", ""),
+                    model=model_name.replace("-FC-strict", "").replace("-FC", ""),
                     temperature=self.temperature,
                     max_tokens=self.max_tokens,
                     top_p=self.top_p,
@@ -108,9 +109,9 @@ class OpenAIHandler(BaseHandler):
         start_time = time.time()
         try:
             response: ChatCompletion = self.client.chat.completions.create(**params)
-        except Exception:
+        except Exception as e:
             latency = time.time() - start_time
-            return "Error", {"input_tokens": 0, "output_tokens": 0, "latency": latency, "prompt": prompt}
+            return f"Error: {e}", {"input_tokens": 0, "output_tokens": 0, "latency": latency, "prompt": prompt, "error": str(e)}
         latency = time.time() - start_time
         return self._handle_response(response, latency, prompt)
 
@@ -119,9 +120,9 @@ class OpenAIHandler(BaseHandler):
         start_time = time.time()
         try:
             response: ChatCompletion = await self.async_client.chat.completions.create(**params)
-        except Exception:
+        except Exception as e:
             latency = time.time() - start_time
-            return "Error", {"input_tokens": 0, "output_tokens": 0, "latency": latency, "prompt": prompt}
+            return f"Error: {e}", {"input_tokens": 0, "output_tokens": 0, "latency": latency, "prompt": prompt, "error": str(e)}
         latency = time.time() - start_time        
         return self._handle_response(response, latency, prompt)
 
@@ -129,10 +130,18 @@ class OpenAIHandler(BaseHandler):
         if "FC" not in self.model_name:
             decoded_output = ast_parse(result,language)
         else:
+            if isinstance(result, str):
+                raise ValueError("Result should be a list of function calls")
             decoded_output = []
             for invoked_function in result:
                 name = list(invoked_function.keys())[0]
                 params = json.loads(invoked_function[name])
+                if "-strict" in self.model_name:
+                    params = {
+                        key: value
+                        for key, value in params.items()
+                        if value is not None
+                    }
                 decoded_output.append({name: params})
         return decoded_output
     
@@ -147,5 +156,7 @@ class OpenAIHandler(BaseHandler):
                     )
             return execution_list
         else:
+            if isinstance(result, str):
+                raise ValueError("Result should be a list of function calls")
             function_call = convert_to_function_call(result)
             return function_call

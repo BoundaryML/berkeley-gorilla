@@ -92,6 +92,8 @@ class ClaudeFCHandler(BaseHandler):
         if "FC" not in self.model_name:
             decoded_output = ast_parse(result,language)
         else:
+            if isinstance(result, str):
+                raise ValueError("Result should be a list of function calls")
             decoded_output = []
             for invoked_function in result:
                 name = list(invoked_function.keys())[0]
@@ -110,5 +112,7 @@ class ClaudeFCHandler(BaseHandler):
                     )
             return execution_list
         else:
+            if isinstance(result, str):
+                raise ValueError("Result should be a list of function calls")
             function_call = convert_to_function_call(result)
             return function_call

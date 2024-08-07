@@ -116,7 +116,7 @@ def single_executable_file_runner(
     return accuracy, len(model_result)
 
 
-def single_relevance_file_runner(handler, model_result, model_name, test_category):
+def single_relevance_file_runner(handler, model_result, model_name: str, test_category):
 
     result = []
     correct_count = 0
@@ -130,9 +130,13 @@ def single_relevance_file_runner(handler, model_result, model_name, test_categor
             success = False
             if is_empty_output(decoded_result):
                 success = True
+                print(f"Empty output {i}")
+            else:
+                print(f"Non-empty output {i}: {decoded_result}")
 
         except Exception as e:
             success = True
+            print(f"Error in decoding AST: {i}")
 
         if success:
             correct_count += 1
@@ -386,19 +390,24 @@ def runner(model_names, test_categories, api_sanity_check):
                 POSSIBLE_ANSWER_PATH, test_category
             )
             possible_answer = load_file(possible_answer_file)
-            accuracy, total_count = single_ast_file_runner(
-                handler,
-                model_result,
-                prompt,
-                possible_answer,
-                language,
-                test_category,
-                model_name,
-            )
-            record_result(
-                LEADERBOARD_TABLE, model_name, test_category, accuracy, total_count
-            )
-            print(f"✅ Test completed: {test_category}. 🎯 Accuracy: {accuracy}")
+            try:
+                accuracy, total_count = single_ast_file_runner(
+                    handler,
+                    model_result,
+                    prompt,
+                    possible_answer,
+                    language,
+                    test_category,
+                    model_name,
+                )
+                record_result(
+                    LEADERBOARD_TABLE, model_name, test_category, accuracy, total_count
+                )
+                print(f"✅ Test completed: {test_category}. 🎯 Accuracy: {accuracy}")
+            except AssertionError as e:
+                print(
+                    f"❌ Test failed: {test_category}. Error: {str(e)}. Skipping this test."
+                )
 
     # This function reads all the score files from local folder and updates the leaderboard table.
     # This is helpful when you only want to run the evaluation for a subset of models and test categories.

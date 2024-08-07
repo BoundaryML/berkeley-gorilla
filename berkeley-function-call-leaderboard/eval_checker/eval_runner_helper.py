@@ -54,6 +54,12 @@ MODEL_METADATA_MAPPING = {
         "OpenAI",
         "Proprietary",
     ],
+    "gpt-4o-mini-2024-07-18-FC-strict": [
+        "GPT-4o-mini-2024-07-18 (FC strict)",
+        "https://openai.com/index/gpt-4o-mini-advancing-cost-efficient-intelligence/",
+        "OpenAI",
+        "Proprietary",
+    ],
     "gpt-4o-mini-2024-07-18": [
         "GPT-4o-mini-2024-07-18 (Prompt)",
         "https://openai.com/index/gpt-4o-mini-advancing-cost-efficient-intelligence/",
@@ -68,6 +74,12 @@ MODEL_METADATA_MAPPING = {
     ],
     "gpt-4o-2024-05-13-FC": [
         "GPT-4o-2024-05-13 (FC)",
+        "https://openai.com/index/hello-gpt-4o/",
+        "OpenAI",
+        "Proprietary",
+    ],
+    "gpt-4o-2024-05-13-FC-strict": [
+        "GPT-4o-2024-05-13 (FC strict)",
         "https://openai.com/index/hello-gpt-4o/",
         "OpenAI",
         "Proprietary",
@@ -218,6 +230,12 @@ MODEL_METADATA_MAPPING = {
     ],
     "gpt-3.5-turbo-0125-FC": [
         "GPT-3.5-Turbo-0125 (FC)",
+        "https://platform.openai.com/docs/models/gpt-3-5-turbo",
+        "OpenAI",
+        "Proprietary",
+    ],
+    "gpt-3.5-turbo-0125-FC-strict": [
+        "GPT-3.5-Turbo-0125 (FC strict)",
         "https://platform.openai.com/docs/models/gpt-3-5-turbo",
         "OpenAI",
         "Proprietary",
@@ -401,6 +419,7 @@ MODEL_METADATA_MAPPING = {
         "https://huggingface.co/NousResearch/Hermes-2-Theta-Llama-3-70B",
         "NousResearch",
         "apache-2.0",
+    ],
     "ollama-llama3.1-BAML": [
         "Meta-Llama-3-8B (BAML)",
         "https://boundaryml.com/",
@@ -517,9 +536,11 @@ INPUT_PRICE_PER_MILLION_TOKEN = {
     "mistral-tiny-2312": 0.25,
     "gpt-4o-mini-2024-07-18-BAML": 0.15,
     "gpt-4o-mini-2024-07-18-FC": 0.15,
+    "gpt-4o-mini-2024-07-18-FC-strict": 0.15,
     "gpt-4o-mini-2024-07-18": 0.15,
     "gpt-4o-2024-05-13-BAML": 5,
     "gpt-4o-2024-05-13-FC": 5,
+    "gpt-4o-2024-05-13-FC-strict": 5,
     "gpt-4o-2024-05-13": 5,
     "gpt-4-1106-preview-FC": 10,
     "gpt-4-1106-preview": 10,
@@ -531,6 +552,7 @@ INPUT_PRICE_PER_MILLION_TOKEN = {
     "gpt-4-0613-FC": 30,
     "gpt-3.5-turbo-0125": 0.5,
     "gpt-3.5-turbo-0125-FC": 0.5,
+    "gpt-3.5-turbo-0125-FC-strict": 0.5,
     "gpt-3.5-turbo-0125-BAML": 0.5,
     "gemini-1.0-pro": 0.5,
     "gemini-1.5-pro-preview-0409": 3.5,
@@ -568,9 +590,11 @@ OUTPUT_PRICE_PER_MILLION_TOKEN = {
     "mistral-tiny-2312": 0.25,
     "gpt-4o-mini-2024-07-18-BAML": 0.6,
     "gpt-4o-mini-2024-07-18-FC": 0.6,
+    "gpt-4o-mini-2024-07-18-FC-strict": 0.6,
     "gpt-4o-mini-2024-07-18": 0.6,
     "gpt-4o-2024-05-13": 15,
     "gpt-4o-2024-05-13-FC": 15,
+    "gpt-4o-2024-05-13-FC-strict": 15,
     "gpt-4o-2024-05-13-BAML": 15,
     "gpt-4o-2024-05-13": 15,
     "gpt-4-turbo-2024-04-09-FC": 30,
@@ -583,6 +607,7 @@ OUTPUT_PRICE_PER_MILLION_TOKEN = {
     "gpt-4-0613-FC": 60,
     "gpt-3.5-turbo-0125": 1.5,
     "gpt-3.5-turbo-0125-FC": 1.5,
+    "gpt-3.5-turbo-0125-FC-strict": 1.5,
     "gpt-3.5-turbo-0125-BAML": 1.5,
     "gemini-1.0-pro": 1.5,
     "gemini-1.5-pro-preview-0409": 10.50,
@@ -753,6 +778,8 @@ def is_empty_output(decoded_output):
     # This function is a patch to the ast decoder for relevance detection
     # Sometimes the ast decoder will parse successfully, but the input doens't really have a function call
     # [], [{}], and anything that is not in function calling format is considered empty (and thus should be marked as correct)
+    if decoded_output is None:
+        return True
     if not is_function_calling_format_output(decoded_output):
         return True
     if len(decoded_output) == 0:

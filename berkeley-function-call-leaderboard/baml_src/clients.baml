@@ -1,7 +1,7 @@
 generator my_client {
     output_type "python/pydantic"
     output_dir "../model_handler"
-    version "0.51.1"
+    version "0.52.1"
 }
 
 client<llm> GPT4 {

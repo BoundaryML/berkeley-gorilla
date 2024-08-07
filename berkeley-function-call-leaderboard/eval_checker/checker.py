@@ -551,7 +551,7 @@ def parallel_function_checker_no_order(
     if len(model_output) != len(possible_answers):
         return {
             "valid": False,
-            "error": ["Wrong number of functions."],
+            "error": [f"Wrong number of functions. {len(model_output)} -> {len(possible_answers)}\m{possible_answers}"],
             "error_type": "parallel_function_checker_no_order:wrong_count",
         }
 
